@@ -7,16 +7,47 @@
 #include <time.h>
 
 
+
+
+
 void readFile(char** filePaths){
+    // start loop to get data for each file 
     for (int i = 0; filePaths[i] != NULL; i++) {
+        // open file 
         FILE* f = fopen(filePaths[i], "r");
+        // check if file actually opened / exists 
         if(f == NULL) {
             printf("Error, file '%s' does not exsist\n", filePaths[i]);
             exit(0);
         }
+        // init min and max temp values, curMin and curMax, line length, and count
+        float max = -100000;
+        float min = 100000;
+        char line[500];
+        float curMax = 0;
+        float curMin = 0;
+        int count = 0;
+        // look at each line in file f and extract data
+        while(fgets(line, sizeof(line), f)) {
+            // scan each line that follows (float) (float) format
+            sscanf(line, "%f %f", &curMax, &curMin);
+            // compare curent min temp
+            if (curMin < min) {
+                // if it is, curMin is the new min
+                min = curMin;
+            }
+            // compare current max temp
+            if (curMax > max) {
+                // if it is, curMax is the new max
+                max = curMax;
+            }
+        }
+        printf("for '%s' max temp = '%f' min temp = '%f'\n", filePaths[i], max, min);
+        fclose(f);
     }
     
 }
+
 
 int main(int argc, char* argv[]){
     char* filePaths[10] = {
