@@ -6,8 +6,8 @@
 #include <pthread.h>
 #include <time.h>
 
-
-
+// single thread, then multithread, see how many clock ticks each takes
+// one buffer for each city 
 
 
 void readFile(char** filePaths){
@@ -27,6 +27,7 @@ void readFile(char** filePaths){
         float curMax = 0;
         float curMin = 0;
         int count = 0;
+        float average = 0;
         // look at each line in file f and extract data
         while(fgets(line, sizeof(line), f)) {
             // scan each line that follows (float) (float) format
@@ -40,9 +41,17 @@ void readFile(char** filePaths){
             if (curMax > max) {
                 // if it is, curMax is the new max
                 max = curMax;
+
+                
             }
+            average = average + curMin + curMax;
+            count = count + 2;
         }
+        count = count;
+
         printf("for '%s' max temp = '%f' min temp = '%f'\n", filePaths[i], max, min);
+        printf("average = '%f'\n", average/count);
+        printf("count = '%d'\n\n", count);
         fclose(f);
     }
     
