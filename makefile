@@ -1,5 +1,5 @@
 data_av: data_av.c
-	gcc data_av.c -o data_av
+	gcc -pthread data_av.c -o data_av
 
 
 .PHONY: clean

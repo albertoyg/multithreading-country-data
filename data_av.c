@@ -6,16 +6,33 @@
 #include <pthread.h>
 #include <time.h>
 
-// single thread, then multithread, see how many clock ticks each takes
-// one buffer for each city 
-
 int totalCount = 0;
 float overallMax = -100000;
 float overallMin = 100000;
 char overallMaxCity[100];
 char overallMinCity[100];
+pthread_mutex_t myMutex;
+clock_t srt;
+clock_t end;
+clock_t difference;
+pthread_t id[11];
 
-void readFile(char* file){
+char* filePaths[11] = {
+        "data_files/Charlottetown.dat",
+        "data_files/Edmonton.dat",
+        "data_files/Halifax.dat",
+        "data_files/Montreal.dat",
+        "data_files/Ottawa.dat",
+        "data_files/Quebec.dat",
+        "data_files/Toronto.dat",
+        "data_files/Vancouver.dat",
+        "data_files/Victoria.dat",
+        "data_files/Winnipeg.dat",
+        NULL
+};
+
+
+void process_file(char* file){
         // open file 
         FILE* f = fopen(file, "r");
         // check if file actually opened / exists 
@@ -31,7 +48,8 @@ void readFile(char* file){
         float curMin = 0;
         int count = 0;
         float average = 0;
-        
+        char spaces;
+
         // Allocate memory for the city name string
         char city[100]; 
 
@@ -41,37 +59,36 @@ void readFile(char* file){
 
         // look at each line in file f and extract data
         while(fgets(line, sizeof(line), f)) {
-            // scan each line that follows (float) (float) format
+            // scan each line that follows (float) (float) formatd
             int items = sscanf(line, "%f %f", &curMax, &curMin);
             if (items == 2){
                 // compare curent min temp
                 if (curMin < min) {
                     // if it is, curMin is the new min
                     min = curMin;
+                    
                 }
                 // compare current max temp
                 if (curMax > max) {
                     // if it is, curMax is the new max
                     max = curMax;
-                    
+                   
                 }
-
-
-
                 average = average + curMin + curMax;
                 count = count + 2;
-            }
-            
+            } 
         }
         totalCount = totalCount + (count/2);
+        
+        // output values
         printf("===================================================\n");
         printf("Data for: %s\n", city);
         printf("%s's lowest temperature is: %.1f degrees Celsius\n", city, min);
         printf("%s's highest temperature is: %.1f degrees Celsius\n", city, max);
-        printf("The average temperature for %s is: %.1f degrees Celsius\n", city, average/count);
+        printf("The average temperature for %s is: %f degrees Celsius\n", city, average/count);
         printf("Total values processed for %s are: %d\n\n", city, (count/2));
         fclose(f);
-
+        // check and update overall max and min
         if (max > overallMax) {
             overallMax = max;
             strcpy(overallMaxCity, city);
@@ -82,49 +99,60 @@ void readFile(char* file){
         }
 }
 
+void* threadExecution(void* thread){
+    // get filename 
+    char* filename = (char*) thread;
+    // lock thread
+    pthread_mutex_lock(&myMutex);
+    // process the thread/file
+    process_file(filename);
+    // unlock thread
+    pthread_mutex_unlock(&myMutex);
+    // exit thread
+    pthread_exit(NULL);
+}
 
 int main(int argc, char* argv[]){
-    char* filePaths[11] = {
-        "data_files/Charlottetown.dat",
-        "data_files/Edmonton.dat",
-        "data_files/Halifax.dat",
-        "data_files/Montreal.dat",
-        "data_files/Ottawa.dat",
-        "data_files/Quebec.dat",
-        "data_files/Toronto.dat",
-        "data_files/Vancouver.dat",
-        "data_files/Victoria.dat",
-        "data_files/Winnipeg.dat",
-        NULL
-    };
-    clock_t start_t;
-    clock_t end_t;
-    double total_t;
-    clock_t elapsed_t;
-    
-    start_t = clock();
+    // init thread
+    pthread_mutex_init(&myMutex, NULL);
+    // start time
+    srt = clock();
+    // single thread 
     if (argc == 1){
+        printf("\n\n              REGULAR EXECUTION\n\n");
         for (int i = 0; filePaths[i] != NULL; i++) {
-            readFile(filePaths[i]);
+            process_file(filePaths[i]);
         }
     }
-    else if (argc == 2)
-    {
-        printf("input is './data_av in multithreading mode'\n");
+    // multithreading
+    else if (strcmp(argv[1],"-m") == 0 ){
+        printf("\n\n              THREADED EXECUTION\n\n");
+        for (int i = 0; filePaths[i] != NULL; i++) {
+            if(pthread_create(&id[i], NULL, threadExecution, filePaths[i])) {
+                printf("error: failed to create thread\n");
+                exit(0);
+            }
+        }    
+        for (int i = 0; id[i] != NULL; i++) {
+                if(pthread_join(id[i], NULL)) {
+                    printf("error: failed to join thread\n");
+                    exit(0);
+            }
+        }
     }
+    // too many arguments
     else {
-        printf("error: Too many arguments\n");
+        printf("error: Wrong or too many arguments\n");
         exit(0);
     }
+    // end time
+    end = clock();
 
-    end_t = clock();
-    total_t = (double)(end_t-start_t)/CLOCKS_PER_SEC;
-    elapsed_t = end_t-start_t;
     printf("===================================================\n");
-    printf("Total values evaluatedis: %d\n", totalCount);
+    printf("Total values evaluated is: %d\n", totalCount);
     printf("The lowest temperature overall is: %.1f reported in: %s\n", overallMin, overallMinCity);
     printf("The highest temperature overall is: %.1f reported in: %s\n", overallMax, overallMaxCity);
-    printf("Elapsed time: %ld clocks\n", elapsed_t);    
+    printf("Elapsed time: %ld clocks\n", end - srt);    
     printf("\n");
 
     return 0;
